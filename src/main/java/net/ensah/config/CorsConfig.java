@@ -19,13 +19,16 @@ public class CorsConfig {
         
         // Autoriser toutes les origines (pour le développement)
         // En production, spécifiez les domaines autorisés
-        config.setAllowedOrigins(Arrays.asList(
-            "http://localhost:8081",
-            "http://localhost:8080",
-            "http://127.0.0.1:8081",
-            "http://127.0.0.1:8080",
-            "*" // Pour permettre l'accès depuis n'importe quelle origine
-        ));
+        // Utiliser allowedOriginPatterns au lieu de allowedOrigins pour permettre "*" avec allowCredentials
+        config.setAllowedOriginPatterns(Arrays.asList("*"));
+        
+        // Alternative: lister explicitement les origines si vous préférez
+        // config.setAllowedOrigins(Arrays.asList(
+        //     "http://localhost:8081",
+        //     "http://localhost:8080",
+        //     "http://127.0.0.1:8081",
+        //     "http://127.0.0.1:8080"
+        // ));
         
         // Autoriser les méthodes HTTP
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
