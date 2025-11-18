@@ -1,3 +1,4 @@
 net/ensah/service/SpeechService.class
 net/ensah/web/AudioController.class
 net/ensah/Application.class
+net/ensah/config/CorsConfig.class
