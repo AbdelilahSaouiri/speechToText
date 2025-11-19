@@ -49,26 +49,27 @@ public class DeepgramStreamingService {
             }
             
             // Construire l'URL avec les paramètres de transcription
-            // Utiliser URIBuilder pour un encodage correct, ou construire manuellement
-            // Essayer d'abord avec les paramètres minimaux
-            String url = DEEPGRAM_WS_URL 
-                    + "?token=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8)
+            // Version simplifiée avec seulement les paramètres essentiels
+            // Le token est OBLIGATOIRE pour l'authentification
+            // encoding, sample_rate et channels sont nécessaires pour que Deepgram sache comment traiter l'audio
+            String query = "token=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8)
                     + "&model=nova-2"
                     + "&language=fr"
-                    + "&encoding=linear16"
-                    + "&sample_rate=16000"
-                    + "&channels=1"
-                    + "&interim_results=true";
+                    + "&encoding=linear16"  // Nécessaire : format audio (PCM16)
+                    + "&sample_rate=16000"  // Nécessaire : fréquence d'échantillonnage
+                    + "&channels=1"         // Nécessaire : mono
+                    + "&interim_results=true"  // Pour avoir les résultats en temps réel
+                    + "&smart_format=true";    // Formatage intelligent du texte
+            
+            // Construire l'URI avec les composants (wss, userInfo, host, port, path, query, fragment)
+            URI serverUri = new URI("wss", null, "api.deepgram.com", 443, "/v1/listen", query, null);
+            
+            String url = serverUri.toString();
             
             logger.info("🔗 Connexion à Deepgram");
             logger.info("🔗 URL (token masqué): {}", url.replace(apiKey, "***"));
             logger.info("🔗 Longueur clé API: {} caractères", apiKey.length());
             logger.info("🔗 Longueur URL totale: {} caractères", url.length());
-            
-            // Créer l'URI - cela devrait encoder correctement
-            URI serverUri = new URI(url);
-            
-            // Vérifier l'URI créé
             logger.debug("🔗 URI créé - Scheme: {}, Host: {}, Path: {}, Query: {}", 
                     serverUri.getScheme(), serverUri.getHost(), serverUri.getPath(), serverUri.getQuery());
             
