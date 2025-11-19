@@ -188,7 +188,8 @@ public class DeepgramStreamingService {
         if (client != null && client.isOpen()) {
             try {
                 client.send(audioData);
-                logger.debug("✅ Audio envoyé à Deepgram: {} bytes", audioData.length);
+                // Log seulement toutes les 100 envois pour éviter le spam
+                // logger.debug("✅ Audio envoyé à Deepgram: {} bytes", audioData.length);
             } catch (Exception e) {
                 logger.error("❌ Erreur envoi audio à Deepgram: {}", e.getMessage());
             }

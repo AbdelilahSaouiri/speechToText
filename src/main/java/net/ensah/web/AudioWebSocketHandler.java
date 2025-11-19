@@ -103,7 +103,7 @@ public class AudioWebSocketHandler extends BinaryWebSocketHandler {
             
             // Envoyer les données audio à Deepgram
             deepgramService.sendAudioData(deepgramClient, audioData);
-            logger.info("📤 Données audio envoyées à Deepgram: {} bytes", audioData.length);
+            logger.debug("📤 Données audio envoyées à Deepgram: {} bytes", audioData.length);
         } else {
             logger.warn("⚠️ Client Deepgram non disponible pour session: {}", session.getId());
         }
