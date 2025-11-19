@@ -52,6 +52,17 @@ public class AudioWebSocketHandler extends BinaryWebSocketHandler {
                 } catch (Exception e) {
                     logger.error("❌ Erreur envoi erreur: {}", e.getMessage());
                 }
+            },
+            // Callback pour onOpen - envoie le message CONNECTED
+            () -> {
+                try {
+                    if (session.isOpen()) {
+                        session.sendMessage(new TextMessage("CONNECTED:DEEPGRAM"));
+                        logger.info("✅ Connexion Deepgram établie pour session: {}", session.getId());
+                    }
+                } catch (Exception e) {
+                    logger.error("❌ Erreur envoi message CONNECTED: {}", e.getMessage());
+                }
             }
         );
         
@@ -62,27 +73,17 @@ public class AudioWebSocketHandler extends BinaryWebSocketHandler {
         new Thread(() -> {
             try {
                 logger.info("🔄 Tentative de connexion à Deepgram...");
-                boolean connected = deepgramClient.connectBlocking(); // Bloque jusqu'à la connexion
-                
-                if (connected && deepgramClient.isOpen()) {
-                    // Attendre un peu pour que Deepgram soit prêt
-                    Thread.sleep(200);
-                    
-                    // Envoyer un message de confirmation une fois connecté
-                    if (session.isOpen()) {
-                        session.sendMessage(new TextMessage("CONNECTED:DEEPGRAM"));
-                    }
-                    
-                    logger.info("✅ Connexion Deepgram établie pour session: {}", session.getId());
-                } else {
-                    throw new Exception("Connexion Deepgram échouée");
-                }
+                deepgramClient.connectBlocking();
             } catch (Exception e) {
                 logger.error("❌ Erreur connexion Deepgram: {}", e.getMessage(), e);
                 deepgramClients.remove(session.getId());
                 if (session.isOpen()) {
                     try {
-                        session.sendMessage(new TextMessage("ERROR: Impossible de se connecter à Deepgram: " + e.getMessage()));
+                        String errorMsg = e.getMessage();
+                        if (errorMsg == null || errorMsg.isEmpty()) {
+                            errorMsg = "Erreur inconnue lors de la connexion à Deepgram";
+                        }
+                        session.sendMessage(new TextMessage("ERROR: " + errorMsg));
                     } catch (Exception sendError) {
                         logger.error("❌ Erreur envoi message d'erreur: {}", sendError.getMessage());
                     }

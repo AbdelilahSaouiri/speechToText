@@ -27,20 +27,35 @@ public class DeepgramStreamingService {
      * Crée une connexion WebSocket vers Deepgram et retourne le client
      * @param onMessage Callback pour les messages de transcription
      * @param onError Callback pour les erreurs
+     * @param onOpen Callback appelé quand la connexion est établie
      * @return WebSocketClient configuré
      */
-    public WebSocketClient createConnection(Consumer<String> onMessage, Consumer<Exception> onError) {
+    public WebSocketClient createConnection(Consumer<String> onMessage, Consumer<Exception> onError, Runnable onOpen) {
         try {
+            // Vérifier que la clé API est définie
+            if (apiKey == null || apiKey.isEmpty()) {
+                throw new RuntimeException("DEEPGRAM_API_KEY n'est pas définie. Définissez la variable d'environnement DEEPGRAM_API_KEY.");
+            }
+            
             // Construire l'URL avec les paramètres de transcription
+            // Utiliser token dans l'URL plutôt que l'en-tête (plus fiable avec Java-WebSocket)
             // encoding=pcm pour PCM16, sample_rate=16000, channels=1
-            String url = DEEPGRAM_WS_URL + "?model=nova-2&language=fr&encoding=pcm&sample_rate=16000&channels=1&interim_results=true&punctuate=true&smart_format=true&no_delay=true";
+            String url = DEEPGRAM_WS_URL + "?token=" + apiKey 
+                    + "&model=nova-2&language=fr&encoding=pcm&sample_rate=16000&channels=1"
+                    + "&interim_results=true&punctuate=true&smart_format=true&no_delay=true";
+            
+            logger.info("🔗 Connexion à Deepgram (URL masquée pour sécurité)");
+            logger.debug("🔗 URL complète: {}", url.replace(apiKey, "***"));
             
             URI serverUri = new URI(url);
             
             WebSocketClient client = new WebSocketClient(serverUri) {
                 @Override
                 public void onOpen(ServerHandshake handshake) {
-                    logger.info("✅ Connexion Deepgram établie");
+                    logger.info("✅ Connexion Deepgram établie - Status: {}", handshake.getHttpStatus());
+                    if (onOpen != null) {
+                        onOpen.run();
+                    }
                 }
                 
                 @Override
@@ -105,18 +120,25 @@ public class DeepgramStreamingService {
                 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
-                    logger.info("🔌 Connexion Deepgram fermée: {} - {}", code, reason);
+                    logger.info("🔌 Connexion Deepgram fermée: {} - {} (remote: {})", code, reason, remote);
+                    if (code != 1000) { // 1000 = fermeture normale
+                        logger.error("❌ Connexion fermée avec code d'erreur: {} - {}", code, reason);
+                        onError.accept(new Exception("Connexion Deepgram fermée: " + code + " - " + reason));
+                    }
                 }
                 
                 @Override
                 public void onError(Exception ex) {
-                    logger.error("❌ Erreur WebSocket Deepgram: {}", ex.getMessage());
+                    logger.error("❌ Erreur WebSocket Deepgram: {} - {}", ex.getMessage(), ex.getClass().getName());
+                    if (ex.getCause() != null) {
+                        logger.error("❌ Cause: {}", ex.getCause().getMessage());
+                    }
                     onError.accept(ex);
                 }
             };
             
-            // Ajouter l'en-tête d'authentification
-            client.addHeader("Authorization", "Token " + apiKey);
+            // Note: L'authentification se fait via le paramètre token dans l'URL
+            // car addHeader() peut ne pas fonctionner correctement avec Java-WebSocket
             
             return client;
             
