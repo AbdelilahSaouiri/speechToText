@@ -1,4 +1,7 @@
 /home/abdelilah/Documents/spring/presentations/voixToText/backend/src/main/java/net/ensah/Application.java
 /home/abdelilah/Documents/spring/presentations/voixToText/backend/src/main/java/net/ensah/config/CorsConfig.java
+/home/abdelilah/Documents/spring/presentations/voixToText/backend/src/main/java/net/ensah/config/WebSocketConfig.java
+/home/abdelilah/Documents/spring/presentations/voixToText/backend/src/main/java/net/ensah/service/DeepgramStreamingService.java
 /home/abdelilah/Documents/spring/presentations/voixToText/backend/src/main/java/net/ensah/service/SpeechService.java
 /home/abdelilah/Documents/spring/presentations/voixToText/backend/src/main/java/net/ensah/web/AudioController.java
+/home/abdelilah/Documents/spring/presentations/voixToText/backend/src/main/java/net/ensah/web/AudioWebSocketHandler.java

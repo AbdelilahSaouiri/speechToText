@@ -101,7 +101,7 @@ public class AudioWebSocketHandler extends BinaryWebSocketHandler {
     }
     
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
         logger.debug("📨 Message texte reçu: {}", payload);
         
