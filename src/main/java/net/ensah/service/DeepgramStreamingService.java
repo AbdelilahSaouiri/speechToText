@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
 @Service
@@ -34,18 +36,39 @@ public class DeepgramStreamingService {
         try {
             // Vérifier que la clé API est définie
             if (apiKey == null || apiKey.isEmpty()) {
+                logger.error("❌ DEEPGRAM_API_KEY n'est pas définie!");
                 throw new RuntimeException("DEEPGRAM_API_KEY n'est pas définie. Définissez la variable d'environnement DEEPGRAM_API_KEY.");
             }
             
-            // Construire l'URL avec les paramètres de transcription
-            // Utiliser token dans l'URL plutôt que l'en-tête (plus fiable avec Java-WebSocket)
-            // encoding=pcm pour PCM16, sample_rate=16000, channels=1
-            String url = DEEPGRAM_WS_URL + "?token=" + apiKey 
-                    + "&model=nova-2&language=fr&encoding=pcm&sample_rate=16000&channels=1"
-                    + "&interim_results=true&punctuate=true&smart_format=true&no_delay=true";
+            // Log partiel de la clé pour vérification (premiers et derniers caractères)
+            if (apiKey.length() > 10) {
+                String maskedKey = apiKey.substring(0, 4) + "..." + apiKey.substring(apiKey.length() - 4);
+                logger.info("🔑 Clé API Deepgram chargée (masquée): {}", maskedKey);
+            } else {
+                logger.warn("⚠️ Clé API Deepgram semble trop courte: {} caractères", apiKey.length());
+            }
             
-            logger.info("🔗 Connexion à Deepgram (URL masquée pour sécurité)");
-            logger.debug("🔗 URL complète: {}", url.replace(apiKey, "***"));
+            // Construire l'URL avec les paramètres de transcription
+            // Deepgram accepte l'authentification via paramètre token OU via en-tête Authorization
+            // Commencer avec des paramètres minimaux pour éviter les erreurs 400
+            StringBuilder urlBuilder = new StringBuilder(DEEPGRAM_WS_URL);
+            urlBuilder.append("?token=").append(URLEncoder.encode(apiKey, StandardCharsets.UTF_8));
+            // Paramètres essentiels seulement
+            urlBuilder.append("&model=nova-2");
+            urlBuilder.append("&language=fr");
+            urlBuilder.append("&encoding=pcm16");
+            urlBuilder.append("&sample_rate=16000");
+            urlBuilder.append("&channels=1");
+            urlBuilder.append("&interim_results=true");
+            // Paramètres optionnels
+            urlBuilder.append("&punctuate=true");
+            urlBuilder.append("&smart_format=true");
+            
+            String url = urlBuilder.toString();
+            
+            logger.info("🔗 Connexion à Deepgram");
+            logger.debug("🔗 URL (token masqué): {}", url.replace(apiKey, "***"));
+            logger.debug("🔗 Longueur clé API: {} caractères", apiKey.length());
             
             URI serverUri = new URI(url);
             
@@ -137,8 +160,14 @@ public class DeepgramStreamingService {
                 }
             };
             
-            // Note: L'authentification se fait via le paramètre token dans l'URL
-            // car addHeader() peut ne pas fonctionner correctement avec Java-WebSocket
+            // Essayer aussi d'ajouter l'en-tête Authorization comme fallback
+            // Certaines versions de Java-WebSocket peuvent nécessiter les deux
+            try {
+                client.addHeader("Authorization", "Token " + apiKey);
+                logger.debug("✅ En-tête Authorization ajouté");
+            } catch (Exception e) {
+                logger.warn("⚠️ Impossible d'ajouter l'en-tête Authorization: {}", e.getMessage());
+            }
             
             return client;
             
