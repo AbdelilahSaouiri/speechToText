@@ -24,7 +24,7 @@ echo "   Préfixe: ${DEEPGRAM_API_KEY:0:4}..."
 echo ""
 
 # Test de connexion avec curl (pour vérifier que la clé est valide)
-echo "🔗 Test de connexion à l'API Deepgram..."
+echo "🔗 Test de connexion à l'API Deepgram REST..."
 
 # Test avec l'API REST (plus simple pour vérifier la clé)
 response=$(curl -s -w "\n%{http_code}" \
@@ -50,10 +50,22 @@ else
 fi
 
 echo ""
+echo "🔗 Test de connexion WebSocket Deepgram..."
+echo "   URL: wss://api.deepgram.com/v1/listen?token=***&model=nova-2&language=fr&encoding=linear16&sample_rate=16000&channels=1&interim_results=true"
+echo ""
+echo "   Pour tester manuellement avec wscat (si installé):"
+echo "   wscat -c 'wss://api.deepgram.com/v1/listen?token=$DEEPGRAM_API_KEY&model=nova-2&language=fr&encoding=linear16&sample_rate=16000&channels=1&interim_results=true'"
+echo ""
+
 echo "✅ Test terminé"
 echo ""
 echo "Si la clé API est valide, le problème pourrait venir de:"
 echo "  1. L'encodage de l'URL dans le code Java"
-echo "  2. Les paramètres de l'URL WebSocket"
-echo "  3. La bibliothèque Java-WebSocket"
+echo "  2. Les paramètres de l'URL WebSocket (encoding=linear16 vs pcm16)"
+echo "  3. La bibliothèque Java-WebSocket qui n'envoie pas correctement les en-têtes"
+echo ""
+echo "Vérifiez les logs du service Spring Boot pour voir:"
+echo "  - Si la clé API est chargée (🔑 Clé API Deepgram chargée)"
+echo "  - L'URL complète utilisée (🔗 URL)"
+echo "  - Les détails de l'erreur 400"
 

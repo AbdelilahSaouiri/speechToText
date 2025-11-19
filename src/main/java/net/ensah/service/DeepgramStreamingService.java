@@ -49,28 +49,28 @@ public class DeepgramStreamingService {
             }
             
             // Construire l'URL avec les paramètres de transcription
-            // Deepgram accepte l'authentification via paramètre token OU via en-tête Authorization
-            // Commencer avec des paramètres minimaux pour éviter les erreurs 400
-            StringBuilder urlBuilder = new StringBuilder(DEEPGRAM_WS_URL);
-            urlBuilder.append("?token=").append(URLEncoder.encode(apiKey, StandardCharsets.UTF_8));
-            // Paramètres essentiels seulement
-            urlBuilder.append("&model=nova-2");
-            urlBuilder.append("&language=fr");
-            urlBuilder.append("&encoding=pcm16");
-            urlBuilder.append("&sample_rate=16000");
-            urlBuilder.append("&channels=1");
-            urlBuilder.append("&interim_results=true");
-            // Paramètres optionnels
-            urlBuilder.append("&punctuate=true");
-            urlBuilder.append("&smart_format=true");
-            
-            String url = urlBuilder.toString();
+            // Utiliser URIBuilder pour un encodage correct, ou construire manuellement
+            // Essayer d'abord avec les paramètres minimaux
+            String url = DEEPGRAM_WS_URL 
+                    + "?token=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8)
+                    + "&model=nova-2"
+                    + "&language=fr"
+                    + "&encoding=linear16"
+                    + "&sample_rate=16000"
+                    + "&channels=1"
+                    + "&interim_results=true";
             
             logger.info("🔗 Connexion à Deepgram");
-            logger.debug("🔗 URL (token masqué): {}", url.replace(apiKey, "***"));
-            logger.debug("🔗 Longueur clé API: {} caractères", apiKey.length());
+            logger.info("🔗 URL (token masqué): {}", url.replace(apiKey, "***"));
+            logger.info("🔗 Longueur clé API: {} caractères", apiKey.length());
+            logger.info("🔗 Longueur URL totale: {} caractères", url.length());
             
+            // Créer l'URI - cela devrait encoder correctement
             URI serverUri = new URI(url);
+            
+            // Vérifier l'URI créé
+            logger.debug("🔗 URI créé - Scheme: {}, Host: {}, Path: {}, Query: {}", 
+                    serverUri.getScheme(), serverUri.getHost(), serverUri.getPath(), serverUri.getQuery());
             
             WebSocketClient client = new WebSocketClient(serverUri) {
                 @Override
@@ -160,13 +160,14 @@ public class DeepgramStreamingService {
                 }
             };
             
-            // Essayer aussi d'ajouter l'en-tête Authorization comme fallback
-            // Certaines versions de Java-WebSocket peuvent nécessiter les deux
+            // Ajouter l'en-tête Authorization (méthode principale)
+            // Java-WebSocket devrait envoyer cet en-tête lors du handshake
             try {
                 client.addHeader("Authorization", "Token " + apiKey);
-                logger.debug("✅ En-tête Authorization ajouté");
+                logger.info("✅ En-tête Authorization ajouté: Token " + apiKey.substring(0, Math.min(8, apiKey.length())) + "...");
             } catch (Exception e) {
-                logger.warn("⚠️ Impossible d'ajouter l'en-tête Authorization: {}", e.getMessage());
+                logger.error("❌ Impossible d'ajouter l'en-tête Authorization: {}", e.getMessage());
+                throw new RuntimeException("Impossible d'ajouter l'en-tête Authorization", e);
             }
             
             return client;
