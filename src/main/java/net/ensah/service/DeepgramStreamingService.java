@@ -32,7 +32,8 @@ public class DeepgramStreamingService {
     public WebSocketClient createConnection(Consumer<String> onMessage, Consumer<Exception> onError) {
         try {
             // Construire l'URL avec les paramètres de transcription
-            String url = DEEPGRAM_WS_URL + "?model=nova-2&language=fr&interim_results=true&punctuate=true&smart_format=true";
+            // encoding=pcm pour PCM16, sample_rate=16000, channels=1
+            String url = DEEPGRAM_WS_URL + "?model=nova-2&language=fr&encoding=pcm&sample_rate=16000&channels=1&interim_results=true&punctuate=true&smart_format=true&no_delay=true";
             
             URI serverUri = new URI(url);
             
@@ -45,6 +46,7 @@ public class DeepgramStreamingService {
                 @Override
                 public void onMessage(String message) {
                     try {
+                        logger.debug("📨 Message Deepgram reçu: {}", message);
                         JsonNode json = objectMapper.readTree(message);
                         
                         // Vérifier s'il y a une erreur
@@ -55,7 +57,20 @@ public class DeepgramStreamingService {
                             return;
                         }
                         
-                        // Extraire la transcription
+                        // Vérifier le type de message
+                        String messageType = json.has("type") ? json.get("type").asText() : "";
+                        
+                        // Messages de métadonnées (ignorés)
+                        if ("Metadata".equals(messageType) || "SpeechStarted".equals(messageType)) {
+                            logger.debug("📋 Message métadonnées Deepgram: {}", messageType);
+                            return;
+                        }
+                        
+                        // Extraire la transcription depuis la structure Deepgram
+                        // Structure: {"channel_index": [0], "duration": ..., "start": ..., "is_final": ..., "channel": {"alternatives": [...]}}
+                        boolean isFinal = json.has("is_final") && json.get("is_final").asBoolean();
+                        String transcript = "";
+                        
                         if (json.has("channel")) {
                             JsonNode channel = json.get("channel");
                             if (channel.has("alternatives")) {
@@ -63,20 +78,28 @@ public class DeepgramStreamingService {
                                 if (alternatives.isArray() && alternatives.size() > 0) {
                                     JsonNode firstAlt = alternatives.get(0);
                                     if (firstAlt.has("transcript")) {
-                                        String transcript = firstAlt.get("transcript").asText();
-                                        boolean isFinal = json.has("is_final") && json.get("is_final").asBoolean();
-                                        
-                                        if (!transcript.isEmpty()) {
-                                            String prefix = isFinal ? "[FINAL]" : "[INTERIM]";
-                                            onMessage.accept(prefix + transcript);
-                                        }
+                                        transcript = firstAlt.get("transcript").asText();
                                     }
                                 }
                             }
                         }
+                        
+                        // Si pas de transcript dans channel, essayer directement dans le JSON
+                        if (transcript.isEmpty() && json.has("transcript")) {
+                            transcript = json.get("transcript").asText();
+                        }
+                        
+                        // Envoyer la transcription si elle n'est pas vide
+                        if (!transcript.isEmpty()) {
+                            String prefix = isFinal ? "[FINAL]" : "[INTERIM]";
+                            logger.info("📝 Transcription Deepgram ({}): {}", isFinal ? "FINAL" : "INTERIM", transcript);
+                            onMessage.accept(prefix + transcript);
+                        } else {
+                            logger.debug("⚠️ Message Deepgram sans transcription: {}", message);
+                        }
                     } catch (Exception e) {
-                        logger.error("❌ Erreur parsing message Deepgram: {}", e.getMessage());
-                        onError.accept(e);
+                        logger.error("❌ Erreur parsing message Deepgram: {} - Message: {}", e.getMessage(), message);
+                        // Ne pas appeler onError pour les erreurs de parsing, juste logger
                     }
                 }
                 
@@ -110,9 +133,15 @@ public class DeepgramStreamingService {
      */
     public void sendAudioData(WebSocketClient client, byte[] audioData) {
         if (client != null && client.isOpen()) {
-            client.send(audioData);
+            try {
+                client.send(audioData);
+                logger.debug("✅ Audio envoyé à Deepgram: {} bytes", audioData.length);
+            } catch (Exception e) {
+                logger.error("❌ Erreur envoi audio à Deepgram: {}", e.getMessage());
+            }
         } else {
-            logger.warn("⚠️ Client Deepgram non connecté");
+            logger.warn("⚠️ Client Deepgram non connecté (client={}, isOpen={})", 
+                client != null, client != null && client.isOpen());
         }
     }
     

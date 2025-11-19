@@ -37,7 +37,7 @@ public class AudioWebSocketHandler extends BinaryWebSocketHandler {
                 try {
                     if (session.isOpen()) {
                         session.sendMessage(new TextMessage(transcript));
-                        logger.debug("📤 Transcription envoyée au client: {}", transcript);
+                        logger.info("📤 Transcription envoyée au client: {}", transcript);
                     }
                 } catch (Exception e) {
                     logger.error("❌ Erreur envoi transcription: {}", e.getMessage());
@@ -61,16 +61,24 @@ public class AudioWebSocketHandler extends BinaryWebSocketHandler {
         // Connecter dans un thread séparé pour ne pas bloquer
         new Thread(() -> {
             try {
-                deepgramClient.connectBlocking(); // Bloque jusqu'à la connexion
+                logger.info("🔄 Tentative de connexion à Deepgram...");
+                boolean connected = deepgramClient.connectBlocking(); // Bloque jusqu'à la connexion
                 
-                // Envoyer un message de confirmation une fois connecté
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage("CONNECTED:DEEPGRAM"));
+                if (connected && deepgramClient.isOpen()) {
+                    // Attendre un peu pour que Deepgram soit prêt
+                    Thread.sleep(200);
+                    
+                    // Envoyer un message de confirmation une fois connecté
+                    if (session.isOpen()) {
+                        session.sendMessage(new TextMessage("CONNECTED:DEEPGRAM"));
+                    }
+                    
+                    logger.info("✅ Connexion Deepgram établie pour session: {}", session.getId());
+                } else {
+                    throw new Exception("Connexion Deepgram échouée");
                 }
-                
-                logger.info("✅ Connexion Deepgram établie pour session: {}", session.getId());
             } catch (Exception e) {
-                logger.error("❌ Erreur connexion Deepgram: {}", e.getMessage());
+                logger.error("❌ Erreur connexion Deepgram: {}", e.getMessage(), e);
                 deepgramClients.remove(session.getId());
                 if (session.isOpen()) {
                     try {
@@ -94,7 +102,7 @@ public class AudioWebSocketHandler extends BinaryWebSocketHandler {
             
             // Envoyer les données audio à Deepgram
             deepgramService.sendAudioData(deepgramClient, audioData);
-            logger.debug("📤 Données audio envoyées à Deepgram: {} bytes", audioData.length);
+            logger.info("📤 Données audio envoyées à Deepgram: {} bytes", audioData.length);
         } else {
             logger.warn("⚠️ Client Deepgram non disponible pour session: {}", session.getId());
         }
