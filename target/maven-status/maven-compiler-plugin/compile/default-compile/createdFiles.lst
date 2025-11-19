@@ -1,3 +1,8 @@
+net/ensah/service/SpeechService.class
+net/ensah/config/WebSocketConfig.class
+net/ensah/web/AudioWebSocketHandler.class
+net/ensah/web/AudioController.class
+net/ensah/service/DeepgramStreamingService$1.class
 net/ensah/Application.class
 net/ensah/config/CorsConfig.class
-net/ensah/config/WebSocketConfig.class
+net/ensah/service/DeepgramStreamingService.class
